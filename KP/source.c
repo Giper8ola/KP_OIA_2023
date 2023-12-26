@@ -51,20 +51,18 @@ int main()
     t_database baseOfInvent;
     baseOfInvent.intialSize = 0;
 
-    printf("wuhdwudhuiw");
+    
     int state;
 
     srand(time(NULL));
     system("chcp 1251");
     setlocale(LC_ALL, "RUS");
     char* filename = "database.bin";
-    baseOfInvent.size = countOfInvInFile(filename);
+    baseOfInvent.size = 1;
 
     do
     {
-
         realoadBaseArray(&baseOfInvent, filename);
-        
         printf("\n1 - Загрузить заказ в БД\n2 - Получить заказы из БД\n3 - Найти заказ в БД\n4 - Отосортировать БД\n5 - Изменить заказ\n6 - Удалить заказ\n");
         scanf("%d", &state);
 
@@ -213,7 +211,6 @@ int main()
 int save(t_inventory* Invent, t_database* base)
 {
     base->intialSize = 1;
-    base->size += 1;
     base->newBaseData = (t_inventory*)malloc(sizeof(t_inventory));
     base->newBaseData = Invent;
    
@@ -322,6 +319,8 @@ t_inventory* fillArrayOfInv(char* fileName)
         Invent[j2] = inv;
         j2++;
     }
+    
+
     fclose(fp2);
     return Invent;
 }
@@ -377,7 +376,6 @@ int validateDate(int* date, char type)
 
 int deleteValue(int number, t_database* base)
 {
-    printf("wwdwd");
     base->newBaseData = (t_inventory*)malloc(base->size * sizeof(t_inventory));
     base->intialSize = 2;
 
@@ -396,21 +394,20 @@ int deleteValue(int number, t_database* base)
 
 int realoadBaseArray(t_database* base, char* fileName)
 {
-    
-    base->size = countOfInvInFile(fileName);
-    
     if (base->intialSize == 2)
-    {
-        FILE* fp = fopen(fileName, "w");
+    {  
+        FILE* fp = fopen(fileName, "w+");
         fwrite(base->newBaseData, sizeof(t_inventory), base->size, fp);
         fclose(fp); 
     }
     if (base->intialSize == 1)
     {
+        
         FILE* fp2 = fopen(fileName, "a+");
-        fwrite(base->newBaseData, sizeof(t_inventory), base->size, fp2);
+        fwrite(base->newBaseData, sizeof(t_inventory), 1, fp2);
         fclose(fp2);
     }
+    base->size = countOfInvInFile(fileName);
     base->array = fillArrayOfInv(fileName);
     base->intialSize = 0;
    
