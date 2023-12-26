@@ -23,39 +23,55 @@ typedef struct Inventory
     char state[100];
 } t_inventory;
 
-struct database {
+typedef struct DataBase
+{
     t_inventory* array;
+    t_inventory* newBaseData;
     int size;
-};
+    int intialSize;
+} t_database;
 
-int save(char* filename, t_inventory Invent[1]);
-int loadMany(char* filename);
-int loadOne(char* filename, char category[100]);
-int sort(char* fileName);
-int updateOne(char* fileName, int number, t_inventory newParams);
-int deleteValue(char* fileName, int number);
+
+int save(t_inventory* Invent, t_database*);
+int loadMany(t_database*);
+int loadOne(char category[100], t_database*);
+int sort(t_database*);
+int updateOne(int number, t_inventory newParams, t_database*);
+int deleteValue(int number, t_database*);
 
 int compare(const void* x1, const void* x2);
 t_inventory* fillArrayOfInv(char* filename);
 int countOfInvInFile(char* fileName);
 int validateDate(int*, char);
+int realoadBaseArray(t_database*);
 
 int main()
 {
+
+    t_database baseOfInvent;
+    baseOfInvent.intialSize = 0;
+
+    printf("wuhdwudhuiw");
     int state;
+
     srand(time(NULL));
     system("chcp 1251");
     setlocale(LC_ALL, "RUS");
     char* filename = "database.bin";
+    baseOfInvent.size = countOfInvInFile(filename);
+
     do
     {
+
+        realoadBaseArray(&baseOfInvent, filename);
+        
         printf("\n1 - Загрузить заказ в БД\n2 - Получить заказы из БД\n3 - Найти заказ в БД\n4 - Отосортировать БД\n5 - Изменить заказ\n6 - Удалить заказ\n");
         scanf("%d", &state);
 
         switch (state)
         {
         case 1: {
-            t_inventory invent[1];
+            t_inventory* invent = (t_inventory*)malloc(sizeof(t_inventory));
             int saveState;
             invent[0].number = rand() % 100;
 
@@ -86,7 +102,7 @@ int main()
             {
             case 1:
             {
-                save(filename, invent);
+                save(invent, &baseOfInvent);
                 break;
             }
             case 2:
@@ -99,7 +115,7 @@ int main()
             break;
         }
         case 2: {
-            loadMany(filename);
+            loadMany(&baseOfInvent);
             break;
         }
 
@@ -108,13 +124,13 @@ int main()
             printf("Введите категорию заказа: ");
             fgets(category, 100, stdin);
             scanf("%[^\n]", &category);
-            loadOne(filename, category);
+            loadOne(category, &baseOfInvent);
             break;
         }
 
         case 4: {
             puts("По дате инвертаризации: ");
-            sort(filename);
+            sort(&baseOfInvent);
             break;
         }
 
@@ -171,7 +187,7 @@ int main()
                 }
                 case 6:
                 {
-                    updateOne(filename, number, newParams);
+                    updateOne(number, newParams, &baseOfInvent);
                     state2 = 2;
                     break;
                 }
@@ -184,7 +200,7 @@ int main()
             int n;
             printf("Введите номер элемента, который хотите удалить:");
             scanf("%d", &n);
-            deleteValue(filename, n);
+            deleteValue(n, &baseOfInvent);
             break;
         }
         default:
@@ -194,111 +210,74 @@ int main()
     } while (1);
 }
 
-int save(char* filename, t_inventory Invent[1])
+int save(t_inventory* Invent, t_database* base)
 {
-    size_t size = sizeof Invent[0];
-    FILE* fp = fopen(filename, "a+");
-    fwrite(Invent, size, 1, fp);
+    base->intialSize = 1;
+    base->size += 1;
+    base->newBaseData = (t_inventory*)malloc(sizeof(t_inventory));
+    base->newBaseData = Invent;
+   
     printf("Заказ успено сохранен");
-    fclose(fp);
 }
 
-int loadMany(char* filename)
+int loadMany(t_database* base)
 {
-    t_inventory Invent;
-    FILE* fp = fopen(filename, "r");
     printf("Заказы в базе данных: \n");
-    while (fread(&Invent, sizeof(Invent), 1, fp) == 1)
+    for (int i = 0; i < base->size; i++)
     {
-        if (strcmp(Invent.state, "-1") != 0)
-            printf("\nНазвание оборудования: %s\nКатегория оборудования: %s\nНомер оборудования: %d\nОписание оборудования: %s\nДата инвертаризации: %d.%d.%d\nСостояние оборудования: %s\n", Invent.name, Invent.category, Invent.number, Invent.description, Invent.Date.day, Invent.Date.month, Invent.Date.year, Invent.state);
+        if (strcmp(base->array[i].state, "-1") != 0)
+            printf("\nНазвание оборудования: %s\nКатегория оборудования: %s\nНомер оборудования: %d\nОписание оборудования: %s\nДата инвертаризации: %d.%d.%d\nСостояние оборудования: %s\n", base->array[i].name, base->array[i].category, base->array[i].number, base->array[i].description, base->array[i].Date.day, base->array[i].Date.month, base->array[i].Date.year, base->array[i].state);
     }
     printf("\n");
-    fclose(fp);
 }
 
 
-int loadOne(char* filename, char category[100])
+int loadOne(char category[100], t_database* base)
 {
-    t_inventory Invent;
-    FILE* fp = fopen(filename, "r");
     printf("\nЗаказы категории: %s\n", category);
-    while (fread(&Invent, sizeof(Invent), 1, fp) == 1)
+    for (int i = 0; i < base->size; i++)
     {
-        if (strcmp(Invent.category, category) == 0)
-            printf("\n\tНазвание оборудования: %s\n\tКатегория оборудования: %s\n\tНомер оборудования: %d\n\tОписание оборудования: %s\n\tДата инвертаризации: %d.%d.%d\n\tСостояние оборудования: %s\n", Invent.name, Invent.category, Invent.number, Invent.description, Invent.Date.day, Invent.Date.month, Invent.Date.year, Invent.state);
+        if (strcmp(base->array[i].category, category) == 0)
+            printf("\nНазвание оборудования: %s\nКатегория оборудования: %s\nНомер оборудования: %d\nОписание оборудования: %s\nДата инвертаризации: %d.%d.%d\nСостояние оборудования: %s\n", base->array[i].name, base->array[i].category, base->array[i].number, base->array[i].description, base->array[i].Date.day, base->array[i].Date.month, base->array[i].Date.year, base->array[i].state);
     }
-    fclose(fp);
+    printf("\n");
 }
 
-int sort(char* fileName)
+int sort(t_database* base)
 {
-    t_inventory* Invent;
-    Invent = fillArrayOfInv(fileName);
+    qsort(base->array, base->size, sizeof(t_inventory), compare);
 
-    int j2 = countOfInvInFile(fileName);
-
-    qsort(Invent, j2, sizeof(t_inventory), compare);
-
-    for (int i = 0; i < j2; i++)
-        printf("\n\tНазвание оборудования: %s\n\tКатегория оборудования: %s\n\tНомер оборудования: %d\n\tОписание оборудования: %s\n\tДата инвертаризации: %d.%d.%d\n\tСостояние оборудования: %s\n", Invent[i].name, Invent[i].category, Invent[i].number, Invent[i].description, Invent[i].Date.day, Invent[i].Date.month, Invent[i].Date.year, Invent[i].state);
+    for (int i = 0; i < base->size; i++)
+        printf("\nНазвание оборудования: %s\nКатегория оборудования: %s\nНомер оборудования: %d\nОписание оборудования: %s\nДата инвертаризации: %d.%d.%d\nСостояние оборудования: %s\n", base->array[i].name, base->array[i].category, base->array[i].number, base->array[i].description, base->array[i].Date.day, base->array[i].Date.month, base->array[i].Date.year, base->array[i].state);
 
     printf("\n");
-    free(Invent);
 }
 
-int updateOne(char* fileName, int number, t_inventory newParams)
+int updateOne(int number, t_inventory newParams, t_database* base)
 {
-    int pos, j2;
-    t_inventory* Invent;
-    t_inventory* newInvent;
-    t_inventory inv;
+    base->newBaseData = (t_inventory*)malloc(base->size * sizeof(t_inventory));
+    base->intialSize = 2;
 
-    Invent = fillArrayOfInv(fileName);
-    j2 = countOfInvInFile(fileName);
-
-    newInvent = (t_inventory*)malloc(j2 * sizeof(t_inventory));
-
-
-    for (int i = 0; i < j2; i++)
+    for (int i = 0; i < base->size; i++)
     {
-        if (Invent[i].number == number)
+        base->newBaseData[i] = base->array[i];
+        if (base->array[i].number == number)
         {
-            pos = i;
-            continue;
-        }
-        newInvent[i] = Invent[i];
-    }
-
-    FILE* fp = fopen(fileName, "r");
-    while (fread(&inv, sizeof(inv), 1, fp) == 1)
-    {
-        if (inv.number == number)
-        {
-            strcpy(inv.name, strcmp(newParams.name, "") != 0 ? newParams.name : inv.name);
-            strcpy(inv.description, strcmp(newParams.description, "") != 0 ? newParams.description : inv.description);
-            strcpy(inv.category, strcmp(newParams.category, "") != 0 ? newParams.category : inv.category);
-            strcpy(inv.state, strcmp(newParams.state, "") != 0 ? newParams.state : inv.state);
+            strcpy(base->newBaseData[i].name, strcmp(newParams.name, "") != 0 ? newParams.name : base->array[i].name);
+            strcpy(base->newBaseData[i].description, strcmp(newParams.description, "") != 0 ? newParams.description : base->array[i].description);
+            strcpy(base->newBaseData[i].category, strcmp(newParams.category, "") != 0 ? newParams.category : base->array[i].category);
+            strcpy(base->newBaseData[i].state, strcmp(newParams.state, "") != 0 ? newParams.state : base->array[i].state);
             if (newParams.Date.day + newParams.Date.month + newParams.Date.year != 0)
             {
-                inv.Date.day = newParams.Date.day;
-                inv.Date.month = newParams.Date.month;
-                inv.Date.year = newParams.Date.year;
+                base->newBaseData[i].Date.day = newParams.Date.day;
+                base->newBaseData[i].Date.month = newParams.Date.month;
+                base->newBaseData[i].Date.year = newParams.Date.year;
             }
-            break;
         }
+        
     }
-
-    fclose(fp);
-    newInvent[pos] = inv;
-
-    size_t size = sizeof(newInvent[0]);
-    FILE* fp2 = fopen(fileName, "w+");
-    fwrite(newInvent, size, j2, fp2);
-    printf("Файл успешно обновлен");
-    fclose(fp2);
-    free(Invent);
-    free(newInvent);
+    printf("База данных успешно обновлена");
+    
 }
 
 int compare(const void* x1, const void* x2)
@@ -396,48 +375,43 @@ int validateDate(int* date, char type)
     }
 }
 
-int deleteValue(char* fileName, int number)
+int deleteValue(int number, t_database* base)
 {
-    int pos, j2;
-    t_inventory* Invent;
-    t_inventory* newInvent;
-    t_inventory inv;
+    printf("wwdwd");
+    base->newBaseData = (t_inventory*)malloc(base->size * sizeof(t_inventory));
+    base->intialSize = 2;
 
-    Invent = fillArrayOfInv(fileName);
-    j2 = countOfInvInFile(fileName);
-
-    newInvent = (t_inventory*)malloc(j2 * sizeof(t_inventory));
-    printf("%d\n", j2);
-
-    for (int i = 0; i < j2; i++)
+    for (int i = 0; i < base->size; i++)
     {
-        if (Invent[i].number == number)
+        base->newBaseData[i] = base->array[i];
+        if (base->array[i].number == number)
         {
-            pos = i;
-            continue;
-        }
-        newInvent[i] = Invent[i];
-    }
-
-    FILE* fp = fopen(fileName, "r");
-    while (fread(&inv, sizeof(inv), 1, fp) == 1)
-    {
-        if (inv.number == number)
-        {
-
-            strcpy(inv.state, strcmp(inv.state, "-1") != 0 ? "-1" : inv.state);
+            strcpy(base->newBaseData[i].state, strcmp(base->array[i].state, "-1") != 0 ? "-1" : base->array[i].state);
             break;
         }
+
     }
-
-    fclose(fp);
-    newInvent[pos] = inv;
-
-    size_t size = sizeof(newInvent[0]);
-    FILE* fp2 = fopen(fileName, "w+");
-    fwrite(newInvent, size, j2, fp2);
     printf("Файл успешно обновлен");
-    fclose(fp2);
-    free(Invent);
-    free(newInvent);
+}
+
+int realoadBaseArray(t_database* base, char* fileName)
+{
+    
+    base->size = countOfInvInFile(fileName);
+    
+    if (base->intialSize == 2)
+    {
+        FILE* fp = fopen(fileName, "w");
+        fwrite(base->newBaseData, sizeof(t_inventory), base->size, fp);
+        fclose(fp); 
+    }
+    if (base->intialSize == 1)
+    {
+        FILE* fp2 = fopen(fileName, "a+");
+        fwrite(base->newBaseData, sizeof(t_inventory), base->size, fp2);
+        fclose(fp2);
+    }
+    base->array = fillArrayOfInv(fileName);
+    base->intialSize = 0;
+   
 }
