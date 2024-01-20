@@ -28,6 +28,7 @@ typedef struct DataBase
 	int size;
 } database_t;
 
+
 int save(inventory_t, database_t*);
 int loadMany(database_t*);
 int findOne(char category[100], database_t*);
@@ -38,6 +39,7 @@ int delete(int number, database_t*);
 int postDataBaseTables(char* fileName, database_t* base);
 int getDataBaseTables(char* fileName, database_t* base);
 
+inventory_t initData();
 void showDataLine(database_t*, int);
 int compare(const void* x1, const void* x2);
 int validateDate(int*, char);
@@ -61,39 +63,18 @@ int main() {
 		switch (state)
 		{
 		case 1: {
-			inventory_t invent;
+			inventory_t invent = initData();
 			int saveState;
-			invent.number = rand() % 100;
-
-			printf("Введите название оборудования: ");
-			fgets(invent.name, 100, stdin);
-			scanf("%[^\n]", invent.name);
-
-			printf("Введите категорию оборудования: ");
-			fgets(invent.category, 100, stdin);
-			scanf("%[^\n]", invent.category);
-
-			printf("Введите описания оборудования: ");
-			fgets(invent.description, 100, stdin);
-			scanf("%[^\n]", invent.description);
-
-			printf("Дата инвертаризации: \n");
-			validateDate(&invent.Date.day, 'd');
-			validateDate(&invent.Date.month, 'm');
-			validateDate(&invent.Date.year, 'y');
-
-			printf("Введите состояние оборудования: ");
-			fgets(invent.state, 100, stdin);
-			scanf("%[^\n]", invent.state);
-
+		
 			puts("Сохранить в БД?\n 1 - да\n 2 - нет");
 			scanf("%d", &saveState);
 			switch (saveState)
 			{
 			case 1:
 			{
-				save(invent, &baseOfData);
-				printf("Заказ успешно сохранен в базу данных ");
+				int s = save(invent, &baseOfData);
+				if(s)
+					printf("Заказ успешно сохранен в базу данных ");
 				break;
 			}
 			case 2:
@@ -106,11 +87,17 @@ int main() {
 			break;
 		}
 		case 2: {
-			getDataBaseTables(fileName, &baseOfData);
+			int getDataState = getDataBaseTables(fileName, &baseOfData);
+			if (getDataState == -1)
+				puts("Утечка памяти при получении данных");
+			else
+				printf("Данные успешно скопированы из базы, колличество данных в таблице: %d\n", getDataState);
 			break;
 		}
 		case 3: {
-			loadMany(&baseOfData);
+			int loadState = loadMany(&baseOfData);
+			if (!loadState)
+				puts("База данных пуста");
 			break;
 		}
 
@@ -119,13 +106,13 @@ int main() {
 			printf("Введите категорию заказа: ");
 			fgets(category, 100, stdin);
 			scanf("%[^\n]", &category);
-			findOne(category, &baseOfData);
+			int t = findOne(category, &baseOfData);
 			break;
 		}
 
 		case 5: {
 			puts("По дате инвертаризации: ");
-			sort(&baseOfData);
+			int t = sort(&baseOfData);
 			break;
 		}
 
@@ -196,13 +183,17 @@ int main() {
 			int n;
 			printf("Введите номер элемента, который хотите удалить:");
 			scanf("%d", &n);
-			delete(n, &baseOfData);
+			int data = delete(n, &baseOfData);
 			break;
 		}
 		case 8:
 		{
-			postDataBaseTables(fileName, &baseOfData);
-			printf("Данные файловой базы успешно обновлены");
+			int postDataState = postDataBaseTables(fileName, &baseOfData);
+			if (postDataState == -1)
+				puts("Невозможно открыть файл");
+			else
+				printf("Данные успешно занесены в базу");
+			break;
 		}
 		default:
 			break;
@@ -211,7 +202,35 @@ int main() {
 	} while (1);
 }
 
+inventory_t initData()
+{
+	inventory_t invent;
+	srand(time(NULL));
+	invent.number = rand() % 100;
 
+	printf("Введите название оборудования: ");
+	fgets(invent.name, 100, stdin);
+	scanf("%[^\n]", invent.name);
+
+	printf("Введите категорию оборудования: ");
+	fgets(invent.category, 100, stdin);
+	scanf("%[^\n]", invent.category);
+
+	printf("Введите описания оборудования: ");
+	fgets(invent.description, 100, stdin);
+	scanf("%[^\n]", invent.description);
+
+	printf("Дата инвертаризации: \n");
+	validateDate(&invent.Date.day, 'd');
+	validateDate(&invent.Date.month, 'm');
+	validateDate(&invent.Date.year, 'y');
+
+	printf("Введите состояние оборудования: ");
+	fgets(invent.state, 100, stdin);
+	scanf("%[^\n]", invent.state);
+
+	return invent;
+}
 
 int save(inventory_t Invent, database_t* base)
 {
@@ -230,6 +249,9 @@ int save(inventory_t Invent, database_t* base)
 
 int loadMany(database_t* base)
 {
+	if (base->size == 0)
+		return base->size;
+
 	printf("Заказы в базе данных: \n");
 	printf("%5s|%20s|%20s|%20s|%20s|%20s|%20s|\n", " ", " Название оборудования", "Категория оборудования", "Номер оборудования", "Описание оборудования", "Дата инвертаризации", "Состояние оборудования");
 
@@ -309,18 +331,21 @@ int getDataBaseTables(char* fileName, database_t* base)
 			base->array = tempTable;
 			base->array[size - 1] = table;
 		}
+		else
+			return -1;
 	}
 	base->size = size == 0 ? 0 : size;
 
 
 	fclose(fp);
-
-	printf("Данные успешно скопированы из базы, колличество данных в таблице: %d\n", size);
+	return size;
 }
 
 int postDataBaseTables(char* fileName, database_t* base)
 {
 	FILE* fp = fopen(fileName, "w");
+	if (fp == NULL)
+		return -1;
 	fwrite(base->array, sizeof(inventory_t), base->size, fp);
 	fclose(fp);
 
